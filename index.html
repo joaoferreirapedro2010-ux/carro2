@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carrinho Seguidor de Linha</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: uma coluna de leitura com o código numerado em bloco rolável */
+:root{--bg:#f6f7f5;--fg:#1b2420;--mut:#5d6a63;--card:#ffffff;--line:#d9dfdb;--acc:#0a7a5a;--accfg:#ffffff;--codebg:#fbfcfb;--num:#9aa6a0;
+--sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121a16;--fg:#e6ede9;--mut:#9aa8a1;--card:#18221d;--line:#2a3830;--acc:#4cc9a0;--accfg:#0b1a14;--codebg:#0f1612;--num:#5f6f67;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121a16;--fg:#e6ede9;--mut:#9aa8a1;--card:#18221d;--line:#2a3830;--acc:#4cc9a0;--accfg:#0b1a14;--codebg:#0f1612;--num:#5f6f67;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.55;
+padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px}
+main{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:20px;min-width:0}
+h1{font-size:clamp(1.5rem,4vw,2rem);line-height:1.2;margin:0;text-wrap:balance}
+p{margin:0;color:var(--mut);max-width:65ch}
+.cab{display:flex;flex-direction:column;gap:8px}
+.etq{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);font-weight:600}
+.barra{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.meta{font-size:.875rem;color:var(--mut)}
+button{font:inherit;font-weight:600;background:var(--acc);color:var(--accfg);border:0;border-radius:6px;padding:9px 16px;cursor:pointer}
+button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.cod{background:var(--codebg);border:1px solid var(--line);border-radius:8px;overflow-x:auto;min-width:0}
+pre{margin:0;padding:16px 16px 16px 0;font-family:var(--mono);font-size:.8125rem;line-height:1.65;tab-size:2;counter-reset:n}
+.l{counter-increment:n}
+.l::before{content:counter(n);display:inline-block;width:3.2em;padding-right:1.2em;text-align:right;color:var(--num);font-variant-numeric:tabular-nums;user-select:none}
+.pinos{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 24px;margin:0;padding:0;list-style:none;font-size:.9rem}
+.pinos li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:6px 0}
+.pinos code{font-family:var(--mono);color:var(--acc)}
+h2{font-size:1rem;margin:0}
+</style>
+</head>
+<body>
+<main>
+<header class="cab">
+<span class="etq">Arduino · C++</span>
+<h1>Carrinho Seguidor de Linha</h1>
+<p>Segue linha preta ou branca com dois sensores infravermelhos, desvia de obstáculos com o sensor ultrassônico HC-SR04 e esterça com um servomotor.</p>
+</header>
+<section aria-labelledby="pinos-t" style="display:flex;flex-direction:column;gap:8px">
+<h2 id="pinos-t">Ligações</h2>
+<ul class="pinos">
+<li>Velocidade (PWM)<code>3</code></li>
+<li>Ponte H, sentido A / B<code>4 / 5</code></li>
+<li>Seletor de modo<code>6</code></li>
+<li>Ultrassom Trig / Echo<code>7 / 8</code></li>
+<li>Servo de direção<code>9</code></li>
+<li>Sensor esquerdo / direito<code>A0 / A1</code></li>
+</ul>
+</section>
+<section style="display:flex;flex-direction:column;gap:10px">
+<div class="barra">
+<span class="meta">124 linhas · biblioteca Servo.h</span>
+<button id="copiar" type="button">Copiar código</button>
+</div>
+<div class="cod"><pre id="codigo"><span class="l">#include &lt;Servo.h&gt; // Importa a biblioteca necessária para controlar servomotores</span>
+<span class="l"></span>
+<span class="l">Servo servoDirecao; // Cria o objeto que vai controlar o servo responsável pela direção</span>
+<span class="l"></span>
+<span class="l">// Definição dos pinos da Ponte H (controle do motor de tração)</span>
+<span class="l">const int pinoVelocidade = 3; // Pino PWM para controlar a velocidade do motor</span>
+<span class="l">const int pinoDirecaoA   = 4; // Pino de controle do sentido de giro A</span>
+<span class="l">const int pinoDirecaoB   = 5; // Pino de controle do sentido de giro B</span>
+<span class="l"></span>
+<span class="l">// Definição dos pinos do Sensor Ultrassônico (HC-SR04)</span>
+<span class="l">const int pinoPulsoUltrassom    = 7; // Pino Trig: envia o pulso sonoro</span>
+<span class="l">const int pinoRecepcaoUltrassom = 8; // Pino Echo: recebe o eco do som refletido</span>
+<span class="l"></span>
+<span class="l">// Definição dos pinos dos Sensores Infravermelhos (seguidores de linha)</span>
+<span class="l">const int sensorEsq = A0; // Sensor posicionado à esquerda</span>
+<span class="l">const int sensorDir = A1; // Sensor posicionado à direita</span>
+<span class="l"></span>
+<span class="l">// Pino da chave ou botão que alterna entre pista preta e pista branca</span>
+<span class="l">const int pinoSeletorModo = 6;</span>
+<span class="l"></span>
+<span class="l">void setup() {</span>
+<span class="l">  // Configura o pino do seletor usando o resistor pull-up interno do Arduino</span>
+<span class="l">  pinMode(pinoSeletorModo, INPUT_PULLUP);</span>
+<span class="l">  </span>
+<span class="l">  // Configura os pinos do sensor ultrassônico</span>
+<span class="l">  pinMode(pinoPulsoUltrassom, OUTPUT);</span>
+<span class="l">  pinMode(pinoRecepcaoUltrassom, INPUT);</span>
+<span class="l">  </span>
+<span class="l">  // Configura os pinos dos sensores de linha como entradas</span>
+<span class="l">  pinMode(sensorEsq, INPUT);</span>
+<span class="l">  pinMode(sensorDir, INPUT);</span>
+<span class="l">  </span>
+<span class="l">  // Configura os pinos da Ponte H como saídas</span>
+<span class="l">  pinMode(pinoVelocidade, OUTPUT);</span>
+<span class="l">  pinMode(pinoDirecaoA, OUTPUT);</span>
+<span class="l">  pinMode(pinoDirecaoB, OUTPUT);</span>
+<span class="l">  </span>
+<span class="l">  // Conecta o servomotor ao pino digital 9 e centraliza as rodas em 45 graus</span>
+<span class="l">  servoDirecao.attach(9);</span>
+<span class="l">  servoDirecao.write(45);</span>
+<span class="l">}</span>
+<span class="l"></span>
+<span class="l">// Função responsável por calcular a distância até um obstáculo em centímetros</span>
+<span class="l">long lerDistancia() {</span>
+<span class="l">  // Garante que o pino Trig comece desligado</span>
+<span class="l">  digitalWrite(pinoPulsoUltrassom, LOW);</span>
+<span class="l">  delayMicroseconds(2);</span>
+<span class="l">  </span>
+<span class="l">  // Emite um pulso ultrassônico de 10 microssegundos</span>
+<span class="l">  digitalWrite(pinoPulsoUltrassom, HIGH);</span>
+<span class="l">  delayMicroseconds(10);</span>
+<span class="l">  digitalWrite(pinoPulsoUltrassom, LOW);</span>
+<span class="l">  </span>
+<span class="l">  // Mede o tempo (em microssegundos) que o som levou para ir e voltar</span>
+<span class="l">  long duracao = pulseIn(pinoRecepcaoUltrassom, HIGH);</span>
+<span class="l">  </span>
+<span class="l">  // Converte o tempo em distância (velocidade do som ~0.034 cm/µs, dividido por 2 pois é ida e volta)</span>
+<span class="l">  long distanciaCm = duracao * 0.034 / 2;</span>
+<span class="l">  return distanciaCm;</span>
+<span class="l">}</span>
+<span class="l"></span>
+<span class="l">// Função auxiliar para acionar o motor para frente e esterçar o servo simultaneamente</span>
+<span class="l">void moverMotor(int velocidade, int anguloServo) {</span>
+<span class="l">  servoDirecao.write(anguloServo);     // Ajusta o ângulo da direção</span>
+<span class="l">  digitalWrite(pinoDirecaoA, HIGH);    // Define o sentido de rotação para frente</span>
+<span class="l">  digitalWrite(pinoDirecaoB, LOW);</span>
+<span class="l">  analogWrite(pinoVelocidade, velocidade); // Aplica a potência/velocidade via PWM (0 a 255)</span>
+<span class="l">}</span>
+<span class="l"></span>
+<span class="l">// Função que executa uma manobra fixa para contornar um obstáculo à frente</span>
+<span class="l">void desviarObstaculo() {</span>
+<span class="l">  // Mantém o carrinho andando para frente em velocidade reduzida (75)</span>
+<span class="l">  digitalWrite(pinoDirecaoA, HIGH);</span>
+<span class="l">  digitalWrite(pinoDirecaoB, LOW);</span>
+<span class="l">  analogWrite(pinoVelocidade, 75);</span>
+<span class="l">  </span>
+<span class="l">  servoDirecao.write(0);   // Vira totalmente para a esquerda para sair da rota do obstáculo</span>
+<span class="l">  delay(1000);             // Avança virado por 1 segundo</span>
+<span class="l">  servoDirecao.write(45);  // Alinha as rodas para frente</span>
+<span class="l">  </span>
+<span class="l">  servoDirecao.write(120); // Vira para a direita para retornar ao trajeto</span>
+<span class="l">  delay(1000);             // Avança virado por 1 segundo</span>
+<span class="l">  servoDirecao.write(45);  // Centraliza novamente as rodas</span>
+<span class="l">}</span>
+<span class="l"></span>
+<span class="l">void loop() {</span>
+<span class="l">  // Lê o estado atual dos dois sensores de linha (HIGH ou LOW) e a distância frontal</span>
+<span class="l">  int esq = digitalRead(sensorEsq);</span>
+<span class="l">  int dir = digitalRead(sensorDir);</span>
+<span class="l">  long distancia = lerDistancia();</span>
+<span class="l">  </span>
+<span class="l">  // 1ª Prioridade: Se detectar qualquer obstáculo válido a menos de 20 cm, inicia o desvio</span>
+<span class="l">  if (distancia &gt; 0 &amp;&amp; distancia &lt; 20) {</span>
+<span class="l">    desviarObstaculo();</span>
+<span class="l">    return; // Interrompe o loop atual para reavaliar os sensores logo após a manobra</span>
+<span class="l">  }</span>
+<span class="l">  </span>
+<span class="l">  // Verifica se o botão/chave seletora está acionado (nível LOW por conta do INPUT_PULLUP)</span>
+<span class="l">  bool modoInvertido = (digitalRead(pinoSeletorModo) == LOW);</span>
+<span class="l"></span>
+<span class="l">  if (modoInvertido) {</span>
+<span class="l">    // MODO INVERTIDO: Segue linha branca sobre fundo escuro (sensores retornam LOW na linha)</span>
+<span class="l">    if (esq == LOW &amp;&amp; dir == LOW) {</span>
+<span class="l">      moverMotor(85, 45);  // Ambos na linha: segue reto em velocidade padrão (85)</span>
+<span class="l">    } else if (esq == LOW &amp;&amp; dir == HIGH) {</span>
+<span class="l">      moverMotor(75, 120); // Saiu pela esquerda: reduz velocidade (75) e vira para a direita</span>
+<span class="l">    } else if (esq == HIGH &amp;&amp; dir == LOW) {</span>
+<span class="l">      moverMotor(75, 0);   // Saiu pela direita: reduz velocidade (75) e vira para a esquerda</span>
+<span class="l">    } else {</span>
+<span class="l">      moverMotor(85, 45);  // Ambos fora da linha (HIGH): mantém trajetória reta</span>
+<span class="l">    }</span>
+<span class="l">  } else {</span>
+<span class="l">    // MODO PADRÃO: Segue linha preta sobre fundo claro (sensores retornam HIGH na linha)</span>
+<span class="l">    if (esq == HIGH &amp;&amp; dir == HIGH) {</span>
+<span class="l">      moverMotor(85, 45);  // Ambos na linha: segue reto em velocidade padrão (85)</span>
+<span class="l">    } else if (esq == HIGH &amp;&amp; dir == LOW) {</span>
+<span class="l">      moverMotor(75, 120); // Saiu pela esquerda: reduz velocidade (75) e vira para a direita</span>
+<span class="l">    } else if (esq == LOW &amp;&amp; dir == HIGH) {</span>
+<span class="l">      moverMotor(75, 0);   // Saiu pela direita: reduz velocidade (75) e vira para a esquerda</span>
+<span class="l">    } else {</span>
+<span class="l">      moverMotor(85, 45);  // Ambos fora da linha (LOW): mantém trajetória reta</span>
+<span class="l">    }</span>
+<span class="l">  }</span>
+<span class="l">}</span>
+</pre></div>
+</section>
+</main>
+<script>
+(function(){
+var b=document.getElementById('copiar'),c=document.getElementById('codigo');
+function sel(){try{var r=document.createRange();r.selectNodeContents(c);var s=window.getSelection();s.removeAllRanges();s.addRange(r);}catch(e){}}
+function ok(t){b.textContent=t;setTimeout(function(){b.textContent='Copiar código'},2000)}
+b.addEventListener('click',function(){
+var t=c.textContent;
+try{navigator.clipboard.writeText(t).then(function(){ok('Copiado')},function(){sel();ok('Selecionado, use Ctrl+C')})}
+catch(e){sel();ok('Selecionado, use Ctrl+C')}
+});
+})();
+</script>
+
+</body>
+</html>
